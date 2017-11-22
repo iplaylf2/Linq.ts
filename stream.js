@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var Exception;
-(function (Exception) {
-    Exception["NotFound"] = "NotFound";
-})(Exception || (Exception = {}));
+var TheError;
+(function (TheError) {
+    TheError["NotFound"] = "NotFound";
+})(TheError || (TheError = {}));
 var Comparers;
 (function (Comparers) {
     Comparers[Comparers['<'] = -1] = '<';
@@ -81,24 +81,23 @@ class Stream {
                 return false;
         } while (true);
     }
-    ref(i) {
+    ref(predicate) {
         var s = this.next();
-        while (i !== 0) {
-            s = this.next();
-            i--;
-        }
-        ;
-        return s.v;
-    }
-    indexOf(predicate) {
-        var s = this.next(), i = 0;
         while (!Stream.IsEnd(s)) {
             if (predicate(s.v))
-                return i;
-            i++;
+                return s.v;
             s = s.next();
         }
-        throw Exception.NotFound;
+        throw TheError.NotFound;
+    }
+    has(predicate) {
+        var s = this.next();
+        while (!Stream.IsEnd(s)) {
+            if (predicate(s.v))
+                return true;
+            s = s.next();
+        }
+        return false;
     }
     shunt(predicate) {
         var arr1 = [], arr2 = [], o = { s: this }, flag = true;
@@ -160,17 +159,11 @@ class Stream {
 exports.Stream = Stream;
 const Create = {
     Map: function create(func, sList) {
-        if (Stream.IsEnd(sList[0]))
-            return Stream.End;
-        else
-            return new Stream(func(...sList.map(s => s.v)), () => create(func, sList.map(s => s.next())));
+        return Stream.IsEnd(sList[0]) ? Stream.End : new Stream(func(...sList.map(s => s.v)), () => create(func, sList.map(s => s.next())));
     },
     CreateFrom: function create(iterator) {
         var result = iterator.next();
-        if (result.done)
-            return Stream.End;
-        else
-            return new Stream(result.value, () => create(iterator));
+        return result.done ? Stream.End : new Stream(result.value, () => create(iterator));
     },
     shunt: function create(predicate, useful, useless, o, i) {
         if (useful.length > i) {
@@ -195,21 +188,11 @@ const Create = {
         }
     },
     filter: function create(predicate, s) {
-        if (Stream.IsEnd(s)) {
-            return Stream.End;
-        }
-        else {
-            if (predicate(s.v))
-                return new Stream(s.v, () => create(predicate, s.next()));
-            else
-                return create(predicate, s.next());
-        }
+        return Stream.IsEnd(s) ? Stream.End
+            : predicate(s.v) ? new Stream(s.v, () => create(predicate, s.next())) : create(predicate, s.next());
     },
     concat: function create(second, first) {
-        if (Stream.IsEnd(first))
-            return second.next();
-        else
-            return new Stream(first.v, () => create(second, first.next()));
+        return Stream.IsEnd(first) ? second.next() : new Stream(first.v, () => create(second, first.next()));
     },
     sort: function (comparer, s) {
         if (Stream.IsEnd(s)) {
@@ -224,10 +207,7 @@ const Create = {
         }
     },
     distinct: function create(equal, s) {
-        if (Stream.IsEnd(s))
-            return Stream.End;
-        else
-            return new Stream(s.v, () => create(equal, s.filter(v => !equal(s.v, v)).next()));
+        return Stream.IsEnd(s) ? Stream.End : new Stream(s.v, () => create(equal, s.filter(v => !equal(s.v, v)).next()));
     },
     intersect: function create(equal, first, second) {
         if (Stream.IsEnd(first)) {
@@ -254,26 +234,12 @@ const Create = {
         }
     },
     skip: function create(predicate, s) {
-        if (Stream.IsEnd(s)) {
-            return Stream.End;
-        }
-        else {
-            if (predicate(s.v))
-                return create(predicate, s.next());
-            else
-                return s;
-        }
+        return Stream.IsEnd(s) ? Stream.End :
+            predicate(s.v) ? create(predicate, s.next()) : s;
     },
     take: function create(predicate, s) {
-        if (Stream.IsEnd(s)) {
-            return Stream.End;
-        }
-        else {
-            if (predicate(s.v))
-                return new Stream(s.v, () => create(predicate, s.next()));
-            else
-                return Stream.End;
-        }
+        return Stream.IsEnd(s) ? Stream.End :
+            predicate(s.v) ? new Stream(s.v, () => create(predicate, s.next())) : Stream.End;
     },
     cache: function create(s) {
         if (Stream.IsEnd(s)) {

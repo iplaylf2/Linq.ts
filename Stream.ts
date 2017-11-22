@@ -1,4 +1,4 @@
-enum Exception {
+enum TheError {
     NotFound = 'NotFound'
 }
 enum Comparers {
@@ -38,6 +38,9 @@ export class Stream<T>{
     }
     public static Empty<T>(): Stream<T> {
         return new Stream(Stream.Head, () => Stream.End);
+    }
+    public static Create<T>(v: T, next: () => Stream<T>): Stream<T> {
+        return new Stream(Stream.Head, () => new Stream(v, next));
     }
     /*prototype*/
     public forEach(action: (v: T) => void): void {
@@ -79,22 +82,21 @@ export class Stream<T>{
             else if (!equal(first.v, second.v)) return false;
         } while (true);
     }
-    public ref(i: number): T {
+    public ref(predicate: IPredicate<T>): T {
         var s = this.next();
-        while (i !== 0) {
-            s = this.next();
-            i--;
-        };
-        return s.v;
-    }
-    public indexOf(predicate: IPredicate<T>): number {
-        var s = this.next(), i = 0;
         while (!Stream.IsEnd(s)) {
-            if (predicate(s.v)) return i;
-            i++;
+            if (predicate(s.v)) return s.v;
             s = s.next();
         }
-        throw Exception.NotFound;
+        throw TheError.NotFound;
+    }
+    public has(predicate: IPredicate<T>): boolean {
+        var s = this.next();
+        while (!Stream.IsEnd(s)) {
+            if (predicate(s.v)) return true;
+            s = s.next();
+        }
+        return false;
     }
     public shunt(predicate: IPredicate<T>): [Stream<T>, Stream<T>] {
         var arr1: T[] = [], arr2: T[] = [], o: { s: Stream<T> } = { s: this }, flag = true;
@@ -158,13 +160,11 @@ export class Stream<T>{
 }
 const Create = {
     Map: function create<TSource, TResult>(func: (...vList: TSource[]) => TResult, sList: Stream<TSource>[]): Stream<TResult> {
-        if (Stream.IsEnd(sList[0])) return Stream.End;
-        else return new Stream(func(...sList.map(s => s.v)), () => create(func, sList.map(s => s.next())));
+        return Stream.IsEnd(sList[0]) ? Stream.End : new Stream(func(...sList.map(s => s.v)), () => create(func, sList.map(s => s.next())));
     },
     CreateFrom: function create<T>(iterator: Iterator<T>): Stream<T> {
         var result = iterator.next();
-        if (result.done) return Stream.End;
-        else return new Stream(result.value, () => create(iterator));
+        return result.done ? Stream.End : new Stream(result.value, () => create(iterator));
     },
     shunt: function create<T>(predicate: IPredicate<T>, useful: T[], useless: T[], o: { s: Stream<T> }, i: number): Stream<T> {
         if (useful.length > i) {
@@ -189,17 +189,11 @@ const Create = {
         }
     },
     filter: function create<T>(predicate: IPredicate<T>, s: Stream<T>): Stream<T> {
-        if (Stream.IsEnd(s)) {
-            return Stream.End;
-        }
-        else {
-            if (predicate(s.v)) return new Stream(s.v, () => create(predicate, s.next()));
-            else return create(predicate, s.next());
-        }
+        return Stream.IsEnd(s) ? Stream.End
+            : predicate(s.v) ? new Stream(s.v, () => create(predicate, s.next())) : create(predicate, s.next());
     },
     concat: function create<T>(second: Stream<T>, first: Stream<T>): Stream<T> {
-        if (Stream.IsEnd(first)) return second.next();
-        else return new Stream(first.v, () => create(second, first.next()));
+        return Stream.IsEnd(first) ? second.next() : new Stream(first.v, () => create(second, first.next()));
     },
     sort: function <T>(comparer: IComparer<T>, s: Stream<T>): Stream<T> {
         if (Stream.IsEnd(s)) {
@@ -208,14 +202,13 @@ const Create = {
         else {
             var [s1, s2] = s.shunt(v => comparer(s.v, v) === Comparers['>']);
             return s1.sort(comparer)
-                .concat(new Stream(Stream.Head, () => new Stream(s.v, () => Stream.End)))
+                .concat(Stream.Create(s.v, () => Stream.End))
                 .concat(s2.sort(comparer))
                 .next();
         }
     },
     distinct: function create<T>(equal: IEqual<T>, s: Stream<T>): Stream<T> {
-        if (Stream.IsEnd(s)) return Stream.End;
-        else return new Stream(s.v, () => create(equal, s.filter(v => !equal(s.v, v)).next()));
+        return Stream.IsEnd(s) ? Stream.End : new Stream(s.v, () => create(equal, s.filter(v => !equal(s.v, v)).next()));
     },
     intersect: function create<T>(equal: IEqual<T>, first: Stream<T>, second: Stream<T>): Stream<T> {
         if (Stream.IsEnd(first)) {
@@ -238,22 +231,12 @@ const Create = {
         }
     },
     skip: function create<T>(predicate: IPredicate<T>, s: Stream<T>): Stream<T> {
-        if (Stream.IsEnd(s)) {
-            return Stream.End;
-        }
-        else {
-            if (predicate(s.v)) return create(predicate, s.next());
-            else return s;
-        }
+        return Stream.IsEnd(s) ? Stream.End :
+            predicate(s.v) ? create(predicate, s.next()) : s;
     },
     take: function create<T>(predicate: IPredicate<T>, s: Stream<T>): Stream<T> {
-        if (Stream.IsEnd(s)) {
-            return Stream.End;
-        }
-        else {
-            if (predicate(s.v)) return new Stream(s.v, () => create(predicate, s.next()));
-            else return Stream.End;
-        }
+        return Stream.IsEnd(s) ? Stream.End :
+            predicate(s.v) ? new Stream(s.v, () => create(predicate, s.next())) : Stream.End;
     },
     cache: function create<T>(s: Stream<T>): Stream<T> {
         if (Stream.IsEnd(s)) {
