@@ -88,6 +88,21 @@ class Enumerable {
         var s = new Stream_1.Stream(Stream_1.Stream.Head, () => Create.GroupBy(keySelector, equal, elementSelector, this.GetStream().next()));
         return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
     }
+    GroupJoin(inner, outerKeySelector, innerKeySelector, resultSelector, equal = Equal) {
+        return new Enumerable(this.GetStream().map(v => {
+            var key = outerKeySelector(v);
+            return resultSelector(v, new Enumerable(inner.GetStream().filter(v => equal(key, innerKeySelector(v)))));
+        }));
+    }
+    Intersect(second, equal = Equal) {
+        return new Enumerable(this.GetStream().intersect(second.GetStream(), equal));
+    }
+    Join(inner, outerKeySelector, innerKeySelector, resultSelector, equal = Equal) {
+        return new Enumerable(new Stream_1.Stream(Stream_1.Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream(), outerKeySelector, innerKeySelector, resultSelector, equal)));
+    }
+    Last(predicate = Predicate) {
+        return this.GetStream().ref(predicate);
+    }
 }
 exports.Enumerable = Enumerable;
 class Grouping extends Enumerable {
@@ -113,6 +128,15 @@ const Create = {
             var [result, rest] = s.shunt(v => equal(key, keySelector(v)));
             return new Stream_1.Stream(new Grouping(key, Stream_1.Stream.Create(value, () => result.map(elementSelector).next())), () => create(keySelector, equal, elementSelector, rest.next()));
         }
+    },
+    Join: function create(outer, inner, outerKeySelector, innerKeySelector, resultSelector, equal) {
+        if (Stream_1.Stream.IsEnd(outer)) {
+            return Stream_1.Stream.End;
+        }
+        else {
+            var outerKey = outerKeySelector(outer.v), outerValue = outer.v;
+            return inner.filter(v => equal(outerKey, innerKeySelector(v))).map(innerValue => resultSelector(outerValue, innerValue)).concat(new Stream_1.Stream(Stream_1.Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal))).next();
+        }
     }
 };
 const ESType = {
@@ -125,6 +149,3 @@ const ESType = {
     function: (o) => typeof (o) === 'function',
     any: (o) => true
 };
-Enumerable.Range(0, 20)
-    .GroupBy(v => v, (x, y) => (x + y) % 2 === 0, v => v, (key, enumerable) => enumerable.Aggregate((l, c) => l + c))
-    .GetStream().toArray();

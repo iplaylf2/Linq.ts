@@ -12,6 +12,7 @@ type IComparer<T> = (x: T, y: T) => Comparers;
 const Equal: IEqual<any> = (x, y) => x === y;
 const Predicate: IPredicate<any> = v => true;
 const Selector: ISelector<any, any> = v => v;
+const Comparer: IComparer<any> = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
 export class Enumerable<T>{
     public readonly GetStream: () => Stream<T>;
     public constructor(s: Stream<T>) {
@@ -76,13 +77,13 @@ export class Enumerable<T>{
         return new Enumerable(this.GetStream().distinct(equal));
     }
     public ElementAt(index: number): T {
-        return this.GetStream().ref(v => index-- === 0 ? true : false);
+        return this.GetStream().first(v => index-- === 0 ? true : false);
     }
     public Except(second: Enumerable<T>, equal: IEqual<T> = Equal): Enumerable<T> {
         return new Enumerable(this.GetStream().except(second.GetStream(), equal));
     }
     public First(predicate: IPredicate<T> = Predicate): T {
-        return this.GetStream().ref(predicate);
+        return this.GetStream().first(predicate);
     }
     public GroupBy<TKey>(keySelector: ISelector<T, TKey>): Enumerable<Grouping<TKey, T>>;
     public GroupBy<TKey>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>): Enumerable<Grouping<TKey, T>>;
@@ -93,7 +94,25 @@ export class Enumerable<T>{
         return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
     }
     public GroupJoin<TInner, TKey, TResult>(inner: Enumerable<TInner>, outerKeySelector: ISelector<T, TKey>, innerKeySelector: ISelector<TInner, TKey>, resultSelector: (outer: T, inners: Enumerable<TInner>) => TResult, equal: IEqual<TKey> = Equal): Enumerable<TResult> {
-
+        return new Enumerable(this.GetStream().map(v => {
+            var key = outerKeySelector(v);
+            return resultSelector(v, new Enumerable(inner.GetStream().filter(v => equal(key, innerKeySelector(v)))));
+        }));
+    }
+    public Intersect(second: Enumerable<T>, equal: IEqual<T> = Equal): Enumerable<T> {
+        return new Enumerable(this.GetStream().intersect(second.GetStream(), equal));
+    }
+    public Join<TInner, TKey, TResult>(inner: Enumerable<TInner>, outerKeySelector: ISelector<T, TKey>, innerKeySelector: ISelector<TInner, TKey>, resultSelector: (outer: T, inner: TInner) => TResult, equal: IEqual<TKey> = Equal): Enumerable<TResult> {
+        return new Enumerable(new Stream(Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream(), outerKeySelector, innerKeySelector, resultSelector, equal)));
+    }
+    public Last(predicate: IPredicate<T> = Predicate): T {
+        return this.GetStream().last(predicate);
+    }
+    public Max(comparer: IComparer<T> = Comparer): T {
+        return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['>'] ? l : c);
+    }
+    public Min(comparer: IComparer<T> = Comparer): T {
+        return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['<'] ? l : c);
     }
 }
 export class Grouping<TKey, TElement> extends Enumerable<TElement>{
@@ -119,6 +138,15 @@ const Create = {
             var [result, rest] = s.shunt(v => equal(key, keySelector(v)));
             return new Stream(new Grouping(key, Stream.Create(value, () => result.map(elementSelector).next())),
                 () => create(keySelector, equal, elementSelector, rest.next()));
+        }
+    },
+    Join: function create<TOuter, TInner, TKey, TResult>(outer: Stream<TOuter>, inner: Stream<TInner>, outerKeySelector: ISelector<TOuter, TKey>, innerKeySelector: ISelector<TInner, TKey>, resultSelector: (outer: TOuter, inner: TInner) => TResult, equal: IEqual<TKey>): Stream<TResult> {
+        if (Stream.IsEnd(outer)) {
+            return Stream.End;
+        }
+        else {
+            var outerKey = outerKeySelector(outer.v), outerValue = outer.v;
+            return inner.filter(v => equal(outerKey, innerKeySelector(v))).map(innerValue => resultSelector(outerValue, innerValue)).concat(new Stream(Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal))).next();
         }
     }
 };

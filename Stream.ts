@@ -56,10 +56,10 @@ export class Stream<T>{
         return arr;
     }
     public reduce<TResult>(product: (lastResult: TResult, currentValue: T) => TResult, initial?: TResult): TResult {
-        var result: TResult, s: Stream<T> = this;
+        var result: any, s: Stream<T> = this;
         if (initial === undefined) {
             s = s.next();
-            result = <any>s.v;
+            result = s.v;
         }
         else {
             result = initial;
@@ -82,13 +82,25 @@ export class Stream<T>{
             else if (!equal(first.v, second.v)) return false;
         } while (true);
     }
-    public ref(predicate: IPredicate<T>): T {
+    public first(predicate: IPredicate<T>): T {
         var s = this.next();
         while (!Stream.IsEnd(s)) {
             if (predicate(s.v)) return s.v;
             s = s.next();
         }
         throw TheError.NotFound;
+    }
+    public last(predicate: IPredicate<T>): T {
+        var s = this.next(), flag = false, result: any;
+        while (!Stream.IsEnd(s)) {
+            if (predicate(s.v)) {
+                flag = true;
+                result = s.v;
+            }
+            s = s.next();
+        }
+        if (flag) return result;
+        else throw TheError.NotFound;
     }
     public has(predicate: IPredicate<T>): boolean {
         var s = this.next();
