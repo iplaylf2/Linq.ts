@@ -77,13 +77,13 @@ export class Enumerable<T>{
         return new Enumerable(this.GetStream().distinct(equal));
     }
     public ElementAt(index: number): T {
-        return this.GetStream().first(v => index-- === 0 ? true : false);
+        return this.GetStream().ref(v => index-- === 0 ? true : false);
     }
     public Except(second: Enumerable<T>, equal: IEqual<T> = Equal): Enumerable<T> {
         return new Enumerable(this.GetStream().except(second.GetStream(), equal));
     }
     public First(predicate: IPredicate<T> = Predicate): T {
-        return this.GetStream().first(predicate);
+        return this.GetStream().ref(predicate);
     }
     public GroupBy<TKey>(keySelector: ISelector<T, TKey>): Enumerable<Grouping<TKey, T>>;
     public GroupBy<TKey>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>): Enumerable<Grouping<TKey, T>>;
@@ -94,19 +94,28 @@ export class Enumerable<T>{
         return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
     }
     public GroupJoin<TInner, TKey, TResult>(inner: Enumerable<TInner>, outerKeySelector: ISelector<T, TKey>, innerKeySelector: ISelector<TInner, TKey>, resultSelector: (outer: T, inners: Enumerable<TInner>) => TResult, equal: IEqual<TKey> = Equal): Enumerable<TResult> {
+        var innerStream = inner.GetStream().cache();
         return new Enumerable(this.GetStream().map(v => {
             var key = outerKeySelector(v);
-            return resultSelector(v, new Enumerable(inner.GetStream().filter(v => equal(key, innerKeySelector(v)))));
+            return resultSelector(v, new Enumerable(innerStream.filter(v => equal(key, innerKeySelector(v)))));
         }));
     }
     public Intersect(second: Enumerable<T>, equal: IEqual<T> = Equal): Enumerable<T> {
         return new Enumerable(this.GetStream().intersect(second.GetStream(), equal));
     }
     public Join<TInner, TKey, TResult>(inner: Enumerable<TInner>, outerKeySelector: ISelector<T, TKey>, innerKeySelector: ISelector<TInner, TKey>, resultSelector: (outer: T, inner: TInner) => TResult, equal: IEqual<TKey> = Equal): Enumerable<TResult> {
-        return new Enumerable(new Stream(Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream(), outerKeySelector, innerKeySelector, resultSelector, equal)));
+        return new Enumerable(new Stream(Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream().cache(), outerKeySelector, innerKeySelector, resultSelector, equal)));
     }
     public Last(predicate: IPredicate<T> = Predicate): T {
-        return this.GetStream().last(predicate);
+        var found = false, result: any;
+        this.GetStream().forEach(v => {
+            if (predicate(v)) {
+                found = true;
+                result = v;
+            }
+        });
+        if (found) return result;
+        throw TheError.NotFound;
     }
     public Max(comparer: IComparer<T> = Comparer): T {
         return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['>'] ? l : c);
