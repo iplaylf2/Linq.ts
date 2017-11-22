@@ -15,6 +15,8 @@ var Comparers;
 const Equal = (x, y) => x === y;
 const Predicate = v => true;
 const Selector = v => v;
+const Comparer = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
+const ResultSelector = (source, element) => element;
 class Enumerable {
     constructor(s) {
         this.GetStream = () => s;
@@ -89,19 +91,52 @@ class Enumerable {
         return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
     }
     GroupJoin(inner, outerKeySelector, innerKeySelector, resultSelector, equal = Equal) {
+        var innerStream = inner.GetStream().cache();
         return new Enumerable(this.GetStream().map(v => {
             var key = outerKeySelector(v);
-            return resultSelector(v, new Enumerable(inner.GetStream().filter(v => equal(key, innerKeySelector(v)))));
+            return resultSelector(v, new Enumerable(innerStream.filter(v => equal(key, innerKeySelector(v)))));
         }));
     }
     Intersect(second, equal = Equal) {
         return new Enumerable(this.GetStream().intersect(second.GetStream(), equal));
     }
     Join(inner, outerKeySelector, innerKeySelector, resultSelector, equal = Equal) {
-        return new Enumerable(new Stream_1.Stream(Stream_1.Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream(), outerKeySelector, innerKeySelector, resultSelector, equal)));
+        return new Enumerable(new Stream_1.Stream(Stream_1.Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream().cache(), outerKeySelector, innerKeySelector, resultSelector, equal)));
     }
     Last(predicate = Predicate) {
-        return this.GetStream().ref(predicate);
+        var found = false, result;
+        this.GetStream().forEach(v => {
+            if (predicate(v)) {
+                found = true;
+                result = v;
+            }
+        });
+        if (found)
+            return result;
+        throw TheError.NotFound;
+    }
+    Max(comparer = Comparer) {
+        return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['>'] ? l : c);
+    }
+    Min(comparer = Comparer) {
+        return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['<'] ? l : c);
+    }
+    OrderBy(keySelector, comparer = Comparer) {
+        throw '';
+    }
+    OrderByDescending(keySelector, comparer = Comparer) {
+        throw '';
+    }
+    Reverse() {
+        return new Enumerable(Stream_1.Stream.CreateFrom(this.GetStream().toArray().reverse()));
+    }
+    Select(selector) {
+        var i = 0;
+        return new Enumerable(this.GetStream().map(v => selector(v, i++)));
+    }
+    SelectMany(collectionSelector, resultSelector = ResultSelector) {
+        var i = 0;
+        return new Enumerable(this.GetStream().map(source => collectionSelector(source, i++).GetStream().map(collection => resultSelector(source, collection))).reduce((l, c) => l.concat(c), Stream_1.Stream.Empty()));
     }
 }
 exports.Enumerable = Enumerable;
@@ -112,6 +147,18 @@ class Grouping extends Enumerable {
     }
 }
 exports.Grouping = Grouping;
+class OrderedEnumerable extends Enumerable {
+    constructor(s) {
+        super(s);
+    }
+    ThenBy(keySelector, comparer = Comparer) {
+        throw '';
+    }
+    ThenByDescending(keySelector, comparer = Comparer) {
+        throw '';
+    }
+}
+exports.OrderedEnumerable = OrderedEnumerable;
 const Create = {
     Range: function create(start, count) {
         return count === 0 ? Stream_1.Stream.End : new Stream_1.Stream(start, () => create(start + 1, count - 1));
@@ -149,3 +196,4 @@ const ESType = {
     function: (o) => typeof (o) === 'function',
     any: (o) => true
 };
+Enumerable.Range(100, 10).SelectMany(v => Enumerable.CreateFrom(v.toString()),(source,element)=>source+Number.parseInt(element));

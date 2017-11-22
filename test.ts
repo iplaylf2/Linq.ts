@@ -1,6 +1,6 @@
 import { Stream } from './Stream';
 enum TheError {
-    NotFound = 'NotFound', ArgumentError = 'ArgumentError'
+    NotFound = 'NotFound', ArgumentError = 'ArgumentError', NotSingle = 'NotSingle'
 }
 enum Comparers {
     ['<'] = -1, ['='] = 0, ['>'] = 1
@@ -13,6 +13,7 @@ const Equal: IEqual<any> = (x, y) => x === y;
 const Predicate: IPredicate<any> = v => true;
 const Selector: ISelector<any, any> = v => v;
 const Comparer: IComparer<any> = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
+const ResultSelector = (source: any, element: any) => element;
 export class Enumerable<T>{
     public readonly GetStream: () => Stream<T>;
     public constructor(s: Stream<T>) {
@@ -123,12 +124,82 @@ export class Enumerable<T>{
     public Min(comparer: IComparer<T> = Comparer): T {
         return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['<'] ? l : c);
     }
+    public OrderBy<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
+        throw '';
+    }
+    public OrderByDescending<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
+        throw '';
+    }
+    public Reverse(): Enumerable<T> {
+        return new Enumerable(Stream.CreateFrom(this.GetStream().toArray().reverse()));
+    }
+    public Select<TResult>(selector: ISelector<T, TResult>): Enumerable<TResult>;
+    public Select<TResult>(selector: (v: T, i: number) => TResult): Enumerable<TResult> {
+        var i = 0;
+        return new Enumerable(this.GetStream().map(v => selector(v, i++)));
+    }
+    public SelectMany<TResult>(selector: ISelector<T, Enumerable<TResult>>): Enumerable<TResult>;
+    public SelectMany<TResult>(selector: (v: T, i: number) => Enumerable<TResult>): Enumerable<TResult>;
+    public SelectMany<TCollection, TResult>(collectionSelector: ISelector<T, Enumerable<TCollection>>, resultSelector: (source: T, collection: TCollection) => TResult): Enumerable<TResult>;
+    public SelectMany<TCollection, TResult>(collectionSelector: (v: T, i: number) => Enumerable<TCollection>, resultSelector: (source: T, collection: TCollection) => TResult): Enumerable<TResult>;
+    public SelectMany<TCollection, TResult>(collectionSelector: (v: T, i: number) => Enumerable<TCollection>, resultSelector: (source: T, collection: TCollection) => TResult = ResultSelector): Enumerable<TResult> {
+        var i = 0;
+        return new Enumerable(this.GetStream().map(source => collectionSelector(source, i++).GetStream().map(collection => resultSelector(source, collection))).reduce((l, c) => l.concat(c), Stream.Empty<TResult>()));
+    }
+    public SequenceEqual(second: Enumerable<T>, equal: IEqual<T> = Equal): boolean {
+        return this.GetStream().equal(second.GetStream(), equal);
+    }
+    public Single(predicate: IPredicate<T> = Predicate): T {
+        var found = false, result: any;
+        this.GetStream().forEach(v => {
+            if (predicate(v)) {
+                if (found) throw TheError.NotSingle;
+                found = true;
+                result = v;
+            }
+        });
+        if (found) return result;
+        throw TheError.NotFound;
+    }
+    public Skip(count: number): Enumerable<T> {
+        return new Enumerable(this.GetStream().skip(v => count-- !== 0));
+    }
+    public SkipWhile(predicate: IPredicate<T>): Enumerable<T>;
+    public SkipWhile(predicate: (v: T, i: number) => boolean): Enumerable<T> {
+        var i = 0;
+        return new Enumerable(this.GetStream().skip(v => predicate(v, i++)));
+    }
+    public Sum(selector: ISelector<T, number> = Selector): number {
+        return this.GetStream().reduce((sum, x) => sum + selector(x), 0);
+    }
+    public Take(count: number): Enumerable<T> {
+        return new Enumerable(this.GetStream().take(v => count-- !== 0));
+    }
+    public TakeWhile(predicate: IPredicate<T>): Enumerable<T>;
+    public TakeWhile(predicate: (v: T, i: number) => boolean): Enumerable<T> {
+        var i = 0;
+        return new Enumerable(this.GetStream().take(v => predicate(v, i++)));
+    }
+    public ToArray(): T[] {
+        return this.GetStream().toArray();
+    }
 }
 export class Grouping<TKey, TElement> extends Enumerable<TElement>{
     public readonly Key: TKey;
     public constructor(key: TKey, elements: Stream<TElement>) {
         super(elements);
         this.Key = key;
+    }
+}
+export class OrderedEnumerable<T> extends Enumerable<T>{
+    public constructor(s: Stream<T>) {
+        super(s);
+    }
+    public ThenBy<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
+        throw '';
+    }
+    public ThenByDescending<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
+        throw '';
     }
 }
 const Create = {
