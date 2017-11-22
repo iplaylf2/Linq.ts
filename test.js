@@ -81,14 +81,38 @@ class Enumerable {
     Except(second, equal = Equal) {
         return new Enumerable(this.GetStream().except(second.GetStream(), equal));
     }
+    First(predicate = Predicate) {
+        return this.GetStream().ref(predicate);
+    }
+    GroupBy(keySelector, equal = Equal, elementSelector = Selector, resultSelector) {
+        var s = new Stream_1.Stream(Stream_1.Stream.Head, () => Create.GroupBy(keySelector, equal, elementSelector, this.GetStream().next()));
+        return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
+    }
 }
 exports.Enumerable = Enumerable;
+class Grouping extends Enumerable {
+    constructor(key, elements) {
+        super(elements);
+        this.Key = key;
+    }
+}
+exports.Grouping = Grouping;
 const Create = {
     Range: function create(start, count) {
         return count === 0 ? Stream_1.Stream.End : new Stream_1.Stream(start, () => create(start + 1, count - 1));
     },
     Repeat: function create(element, count) {
         return count === 0 ? Stream_1.Stream.End : new Stream_1.Stream(element, () => create(element, count - 1));
+    },
+    GroupBy: function create(keySelector, equal, elementSelector, s) {
+        if (Stream_1.Stream.IsEnd(s)) {
+            return Stream_1.Stream.End;
+        }
+        else {
+            var key = keySelector(s.v), value = elementSelector(s.v);
+            var [result, rest] = s.shunt(v => equal(key, keySelector(v)));
+            return new Stream_1.Stream(new Grouping(key, Stream_1.Stream.Create(value, () => result.map(elementSelector).next())), () => create(keySelector, equal, elementSelector, rest.next()));
+        }
     }
 };
 const ESType = {
@@ -101,4 +125,6 @@ const ESType = {
     function: (o) => typeof (o) === 'function',
     any: (o) => true
 };
-Enumerable.Range(2, 5).ElementAt(2);
+Enumerable.Range(0, 20)
+    .GroupBy(v => v, (x, y) => (x + y) % 2 === 0, v => v, (key, enumerable) => enumerable.Aggregate((l, c) => l + c))
+    .GetStream().toArray();

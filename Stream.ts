@@ -151,9 +151,12 @@ export class Stream<T>{
         return new Stream(Stream.Head, () => Create.take(predicate, this.next()));
     }
     public cache(): Stream<T> {
-        var next: Stream<T>;
+        var next: Stream<T>, flag = true;
         return new Stream(Stream.Head, () => {
-            if (next === undefined) next = Create.cache(this.next());
+            if (flag) {
+                next = Create.cache(this.next());
+                flag = false;
+            };
             return next;
         });
     }
@@ -243,9 +246,12 @@ const Create = {
             return Stream.End
         }
         else {
-            var next: Stream<T>;
+            var next: Stream<T>, flag = true;
             return new Stream(s.v, () => {
-                if (next === undefined) next = create(s.next());
+                if (flag) {
+                    next = create(s.next());
+                    flag = false;
+                }
                 return next;
             });
         }

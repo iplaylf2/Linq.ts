@@ -14,7 +14,7 @@ const Predicate: IPredicate<any> = v => true;
 const Selector: ISelector<any, any> = v => v;
 export class Enumerable<T>{
     public readonly GetStream: () => Stream<T>;
-    protected constructor(s: Stream<T>) {
+    public constructor(s: Stream<T>) {
         this.GetStream = () => s;
     }
     [Symbol.iterator](): Iterator<T> {
@@ -85,19 +85,21 @@ export class Enumerable<T>{
         return this.GetStream().ref(predicate);
     }
     public GroupBy<TKey>(keySelector: ISelector<T, TKey>): Enumerable<Grouping<TKey, T>>;
-    public GroupBy<TKey, TElement>(keySelector: ISelector<T, TKey>, elementSelector: ISelector<T, TElement>): Enumerable<Grouping<TKey, TElement>>;
-    public GroupBy<TKey, TElement, TResult>(keySelector: ISelector<T, TKey>, elementSelector: ISelector<T, TElement>, resultSelector: (key: TKey, elements: Enumerable<TElement>) => TResult): Enumerable<TResult>;
-    public GroupBy<TKey, TElement, TResult>(keySelector: ISelector<T, TKey>, elementSelector: ISelector<T, TElement>, resultSelector: (key: TKey, elements: Enumerable<TElement>) => TResult, equal: IEqual<TKey>): Enumerable<TResult>;
-    public GroupBy(keySelector: any, elementSelector?: any, resultSelector?: any, equal?: any): any {
-        if (ESType.function(keySelector) && ESType.undefined(elementSelector) && ESType.undefined(resultSelector) && ESType.undefined(equal)) {
+    public GroupBy<TKey>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>): Enumerable<Grouping<TKey, T>>;
+    public GroupBy<TKey, TElement>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>, elementSelector: ISelector<T, TElement>): Enumerable<Grouping<TKey, TElement>>;
+    public GroupBy<TKey, TElement, TResult>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>, elementSelector: ISelector<T, TElement>, resultSelector: (key: TKey, elements: Enumerable<TElement>) => TResult): Enumerable<TResult>;
+    public GroupBy(keySelector: any, equal = Equal, elementSelector = Selector, resultSelector?: any): any {
+        var s: Stream<Grouping<any, any>> = new Stream(Stream.Head, () => Create.GroupBy(keySelector, equal, elementSelector, this.GetStream().next()));
+        return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
+    }
+    public GroupJoin<TInner, TKey, TResult>(inner: Enumerable<TInner>, outerKeySelector: ISelector<T, TKey>, innerKeySelector: ISelector<TInner, TKey>, resultSelector: (outer: T, inners: Enumerable<TInner>) => TResult, equal: IEqual<TKey> = Equal): Enumerable<TResult> {
 
-        }
     }
 }
 export class Grouping<TKey, TElement> extends Enumerable<TElement>{
     public readonly Key: TKey;
-    protected constructor(key: TKey, elements: Enumerable<TElement>) {
-        super(elements.GetStream());
+    public constructor(key: TKey, elements: Stream<TElement>) {
+        super(elements);
         this.Key = key;
     }
 }
@@ -108,12 +110,16 @@ const Create = {
     Repeat: function create<T>(element: T, count: number): Stream<T> {
         return count === 0 ? Stream.End : new Stream(element, () => create(element, count - 1));
     },
-    GroupBy: function create<T, TKey>(keySelector: ISelector<T, TKey>, s: Stream<T>): [Stream<T>, Stream<T>] {
-        var key: TKey;
-        var [result, rest] = s.shunt(v => {
-            if (key === undefined) key = keySelector(s.next().v);
-            return key === keySelector(v);
-        });
+    GroupBy: function create<T, TKey, TElement>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>, elementSelector: ISelector<T, TElement>, s: Stream<T>): Stream<Grouping<TKey, TElement>> {
+        if (Stream.IsEnd(s)) {
+            return Stream.End;
+        }
+        else {
+            var key = keySelector(s.v), value = elementSelector(s.v);
+            var [result, rest] = s.shunt(v => equal(key, keySelector(v)));
+            return new Stream(new Grouping(key, Stream.Create(value, () => result.map(elementSelector).next())),
+                () => create(keySelector, equal, elementSelector, rest.next()));
+        }
     }
 };
 const ESType = {

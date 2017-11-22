@@ -39,6 +39,9 @@ class Stream {
     static Empty() {
         return new Stream(Stream.Head, () => Stream.End);
     }
+    static Create(v, next) {
+        return new Stream(Stream.Head, () => new Stream(v, next));
+    }
     /*prototype*/
     forEach(action) {
         var s = this.next();
@@ -148,10 +151,13 @@ class Stream {
         return new Stream(Stream.Head, () => Create.take(predicate, this.next()));
     }
     cache() {
-        var next;
+        var next, flag = true;
         return new Stream(Stream.Head, () => {
-            if (next === undefined)
+            if (flag) {
                 next = Create.cache(this.next());
+                flag = false;
+            }
+            ;
             return next;
         });
     }
@@ -201,7 +207,7 @@ const Create = {
         else {
             var [s1, s2] = s.shunt(v => comparer(s.v, v) === Comparers['>']);
             return s1.sort(comparer)
-                .concat(new Stream(Stream.Head, () => new Stream(s.v, () => Stream.End)))
+                .concat(Stream.Create(s.v, () => Stream.End))
                 .concat(s2.sort(comparer))
                 .next();
         }
@@ -246,10 +252,12 @@ const Create = {
             return Stream.End;
         }
         else {
-            var next;
+            var next, flag = true;
             return new Stream(s.v, () => {
-                if (next === undefined)
+                if (flag) {
                     next = create(s.next());
+                    flag = false;
+                }
                 return next;
             });
         }
