@@ -1,6 +1,6 @@
 import { Stream } from './Stream';
 enum TheError {
-    NotFound = 'NotFound', ArgumentError = 'ArgumentError', NotSingle = 'NotSingle', KeyRepeat = 'KeyRepeat'
+    NotFound = 'NotFound', ArgumentError = 'ArgumentError', NotSingle = 'NotSingle', KeyRepeat = 'KeyRepeat', Never = 'Never'
 }
 enum Comparers {
     ['<'] = -1, ['='] = 0, ['>'] = 1
@@ -124,11 +124,22 @@ export class Enumerable<T>{
     public Min(comparer: IComparer<T> = Comparer): T {
         return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['<'] ? l : c);
     }
-    public OrderBy<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
-        throw '';
+    public OrderBy<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<TKey> = Comparer): OrderedEnumerable<T> {
+        return new OrderedEnumerable(this.GetStream(), Create.Comparer(keySelector, comparer));
     }
-    public OrderByDescending<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
-        throw '';
+    public OrderByDescending<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<TKey> = Comparer): OrderedEnumerable<T> {
+        return new OrderedEnumerable(this.GetStream(), Create.Comparer(keySelector, (x, y) => {
+            switch (comparer(x, y)) {
+                case Comparers['<']:
+                    return Comparers['>'];
+                case Comparers['>']:
+                    return Comparers['<'];
+                case Comparers['=']:
+                    return Comparers['='];
+                default:
+                    throw TheError.Never;
+            }
+        }));
     }
     public Reverse(): Enumerable<T> {
         return new Enumerable(Stream.CreateFrom(this.GetStream().toList().reverse()));
@@ -215,15 +226,38 @@ export class Enumerable<T>{
     }
 }
 export class OrderedEnumerable<T> extends Enumerable<T>{
-    public constructor(s: Stream<T>) {
-        super(s);
+    public constructor(s: Stream<T>, comparer: IComparer<T>) {
+        super(s.sort(comparer));
+        this.ThenBy = (ks, cp = Comparer) => {
+            return new OrderedEnumerable(s, (x, y) => {
+                var last = comparer(x, y);
+                if (last === Comparers['=']) {
+                    return cp(ks(x), ks(y));
+                }
+                return last
+            });
+        };
+        this.ThenByDescending = (ks, cp = Comparer) => {
+            return new OrderedEnumerable(s, (x, y) => {
+                var last = comparer(x, y);
+                if (last === Comparers['=']) {
+                    switch (cp(ks(x), ks(y))) {
+                        case Comparers['<']:
+                            return Comparers['>'];
+                        case Comparers['>']:
+                            return Comparers['<'];
+                        case Comparers['=']:
+                            return Comparers['='];
+                        default:
+                            throw TheError.Never;
+                    }
+                }
+                return last
+            });
+        };
     }
-    public ThenBy<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
-        throw '';
-    }
-    public ThenByDescending<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
-        throw '';
-    }
+    public readonly ThenBy: <TKey>(keySelector: ISelector<T, TKey>, comparer?: IComparer<TKey>) => OrderedEnumerable<T>;
+    public readonly ThenByDescending: <TKey>(keySelector: ISelector<T, TKey>, comparer?: IComparer<TKey>) => OrderedEnumerable<T>;
 }
 export class Grouping<TKey, TElement> extends Enumerable<TElement>{
     public readonly Key: TKey;
@@ -269,6 +303,9 @@ const Create = {
             var outerKey = outerKeySelector(outer.v), outerValue = outer.v;
             return inner.filter(v => equal(outerKey, innerKeySelector(v))).map(innerValue => resultSelector(outerValue, innerValue)).concat(new Stream(Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal))).next();
         }
+    },
+    Comparer: function <T, Tkey>(keySelector: ISelector<T, Tkey>, comparer: IComparer<Tkey>): IComparer<T> {
+        return (x, y) => comparer(keySelector(x), keySelector(y));
     }
 };
 const ESType = {

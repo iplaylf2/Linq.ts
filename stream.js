@@ -50,11 +50,6 @@ class Stream {
             s = s.next();
         }
     }
-    toArray() {
-        var arr = [];
-        this.forEach(v => arr.push(v));
-        return arr;
-    }
     reduce(product, initial) {
         var result, s = this;
         if (initial === undefined) {
@@ -68,6 +63,12 @@ class Stream {
             result = product(result, v);
         });
         return result;
+    }
+    toList() {
+        return this.reduce((arr, v) => {
+            arr.push(v);
+            return arr;
+        }, new Array());
     }
     equal(second, equal) {
         var first = this, a, b;
