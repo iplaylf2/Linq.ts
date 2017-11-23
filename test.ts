@@ -1,6 +1,6 @@
 import { Stream } from './Stream';
 enum TheError {
-    NotFound = 'NotFound', ArgumentError = 'ArgumentError', NotSingle = 'NotSingle'
+    NotFound = 'NotFound', ArgumentError = 'ArgumentError', NotSingle = 'NotSingle', KeyRepeat = 'KeyRepeat'
 }
 enum Comparers {
     ['<'] = -1, ['='] = 0, ['>'] = 1
@@ -131,7 +131,7 @@ export class Enumerable<T>{
         throw '';
     }
     public Reverse(): Enumerable<T> {
-        return new Enumerable(Stream.CreateFrom(this.GetStream().toArray().reverse()));
+        return new Enumerable(Stream.CreateFrom(this.GetStream().toList().reverse()));
     }
     public Select<TResult>(selector: ISelector<T, TResult>): Enumerable<TResult>;
     public Select<TResult>(selector: (v: T, i: number) => TResult): Enumerable<TResult> {
@@ -180,15 +180,38 @@ export class Enumerable<T>{
         var i = 0;
         return new Enumerable(this.GetStream().take(v => predicate(v, i++)));
     }
-    public ToArray(): T[] {
-        return this.GetStream().toArray();
+    public ToDictionary<TKey>(keySelector: ISelector<T, TKey>): Map<TKey, T>;
+    public ToDictionary<TKey>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>): Map<TKey, T>;
+    public ToDictionary<TKey, TElement>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>, elementSelector: ISelector<T, TElement>): Map<TKey, TElement>;
+    public ToDictionary<TKey, TElement>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey> = Equal, elementSelector: ISelector<T, TElement> = Selector): Map<TKey, TElement> {
+        return this.GetStream().reduce((l, c) => {
+            var key = keySelector(c);
+            for (var k of l.keys()) {
+                if (equal(key, k)) throw TheError.KeyRepeat;
+            }
+            l.set(key, elementSelector(c));
+            return l;
+        }, new Map<TKey, TElement>());
     }
-}
-export class Grouping<TKey, TElement> extends Enumerable<TElement>{
-    public readonly Key: TKey;
-    public constructor(key: TKey, elements: Stream<TElement>) {
-        super(elements);
-        this.Key = key;
+    public ToList(): T[] {
+        return this.GetStream().toList();
+    }
+    public ToLookup<TKey>(keySelector: ISelector<T, TKey>): Lookup<TKey, T>;
+    public ToLookup<TKey>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>): Lookup<TKey, T>;
+    public ToLookup<TKey, TElement>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey>, elementSelector: ISelector<T, TElement>): Lookup<TKey, TElement>;
+    public ToLookup<TKey, TElement>(keySelector: ISelector<T, TKey>, equal: IEqual<TKey> = Equal, elementSelector: ISelector<T, TElement> = Selector): Lookup<TKey, TElement> {
+        return new Lookup(this.GroupBy(keySelector, equal, elementSelector).GetStream());
+    }
+    public Union(second: Enumerable<T>, equal: IEqual<T> = Equal): Enumerable<T> {
+        return new Enumerable(this.GetStream().union(second.GetStream(), equal));
+    }
+    public Where(predicate: IPredicate<T>): Enumerable<T>;
+    public Where(predicate: (v: T, i: number) => boolean): Enumerable<T> {
+        var i = 0;
+        return new Enumerable(this.GetStream().filter(v => predicate(v, i++)));
+    }
+    public Zip<TSecond, TResult>(second: Enumerable<TSecond>, resultSelector: (first: T, second: TSecond) => TResult): Enumerable<TResult> {
+        return new Enumerable(Stream.Map(resultSelector, this.GetStream(), second.GetStream()));
     }
 }
 export class OrderedEnumerable<T> extends Enumerable<T>{
@@ -200,6 +223,24 @@ export class OrderedEnumerable<T> extends Enumerable<T>{
     }
     public ThenByDescending<TKey>(keySelector: ISelector<T, TKey>, comparer: IComparer<T> = Comparer): OrderedEnumerable<T> {
         throw '';
+    }
+}
+export class Grouping<TKey, TElement> extends Enumerable<TElement>{
+    public readonly Key: TKey;
+    public constructor(key: TKey, elements: Stream<TElement>) {
+        super(elements);
+        this.Key = key;
+    }
+}
+export class Lookup<TKey, TElement> extends Enumerable<Grouping<TKey, TElement>>{
+    public constructor(s: Stream<Grouping<TKey, TElement>>) {
+        super(s);
+    }
+    public Get(key: TKey): Enumerable<TElement> {
+        return this.First(v => v.Key === key);
+    }
+    public ContainsKey(key: TKey): boolean {
+        return this.Any(v => v.Key === key);
     }
 }
 const Create = {

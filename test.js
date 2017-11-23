@@ -196,4 +196,7 @@ const ESType = {
     function: (o) => typeof (o) === 'function',
     any: (o) => true
 };
-Enumerable.Range(100, 10).SelectMany(v => Enumerable.CreateFrom(v.toString()),(source,element)=>source+Number.parseInt(element));
+Enumerable.Range(100, 10)
+    .SelectMany(v =>
+        Enumerable.CreateFrom(v.toString()),
+    (source, element) => source + Number.parseInt(element));

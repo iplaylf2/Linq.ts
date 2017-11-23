@@ -30,7 +30,7 @@ export class Stream<T>{
     public static IsEnd<T>(s: Stream<T>): boolean {
         return s === Stream.End;
     }
-    public static Map<TSource, TResult>(func: (...vList: TSource[]) => TResult, ...sList: Stream<TSource>[]): Stream<TResult> {
+    public static Map<TResult>(func: (...vList: any[]) => TResult, ...sList: Stream<any>[]): Stream<TResult> {
         return new Stream(Stream.Head, () => Create.Map(func, sList.map(s => s.next())));
     }
     public static CreateFrom<T>(iterable: Iterable<T>): Stream<T> {
@@ -50,11 +50,6 @@ export class Stream<T>{
             s = s.next();
         }
     }
-    public toArray(): T[] {
-        var arr: T[] = [];
-        this.forEach(v => arr.push(v));
-        return arr;
-    }
     public reduce<TResult>(product: (lastResult: TResult, currentValue: T) => TResult, initial?: TResult): TResult {
         var result: any, s: Stream<T> = this;
         if (initial === undefined) {
@@ -68,6 +63,12 @@ export class Stream<T>{
             result = product(result, v);
         });
         return result;
+    }
+    public toList(): T[] {
+        return this.reduce((arr, v) => {
+            arr.push(v);
+            return arr;
+        }, new Array<T>());
     }
     public equal(second: Stream<T>, equal: IEqual<T>): boolean {
         var first: Stream<T> = this,
