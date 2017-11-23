@@ -1,15 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var TheError;
-(function (TheError) {
-    TheError["NotFound"] = "NotFound";
-})(TheError || (TheError = {}));
-var Comparers;
-(function (Comparers) {
-    Comparers[Comparers['<'] = -1] = '<';
-    Comparers[Comparers['='] = 0] = '=';
-    Comparers[Comparers['>'] = 1] = '>';
-})(Comparers || (Comparers = {}));
+const utility_1 = require("./utility");
 class Stream {
     constructor(v, next) {
         this.v = v;
@@ -92,7 +83,7 @@ class Stream {
                 return s.v;
             s = s.next();
         }
-        throw TheError.NotFound;
+        throw utility_1.TheError.NotFound;
     }
     has(predicate) {
         var s = this.next();
@@ -206,7 +197,7 @@ const Create = {
             return Stream.End;
         }
         else {
-            var [s1, s2] = s.shunt(v => comparer(s.v, v) === Comparers['>']);
+            var [s1, s2] = s.shunt(v => comparer(s.v, v) === utility_1.Comparers['>']);
             return s1.sort(comparer)
                 .concat(Stream.Create(s.v, () => Stream.End))
                 .concat(s2.sort(comparer))

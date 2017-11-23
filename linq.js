@@ -1,25 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const utility_1 = require("./utility");
 const Stream_1 = require("./Stream");
-var TheError;
-(function (TheError) {
-    TheError["NotFound"] = "NotFound";
-    TheError["ArgumentError"] = "ArgumentError";
-    TheError["NotSingle"] = "NotSingle";
-    TheError["KeyRepeat"] = "KeyRepeat";
-    TheError["Never"] = "Never";
-})(TheError || (TheError = {}));
-var Comparers;
-(function (Comparers) {
-    Comparers[Comparers['<'] = -1] = '<';
-    Comparers[Comparers['='] = 0] = '=';
-    Comparers[Comparers['>'] = 1] = '>';
-})(Comparers || (Comparers = {}));
-const Equal = (x, y) => x === y;
-const Predicate = v => true;
-const Selector = v => v;
-const Comparer = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
-const ResultSelector = (source, element) => element;
 class Enumerable {
     constructor(s) {
         this.GetStream = () => s;
@@ -40,24 +22,24 @@ class Enumerable {
         return new Enumerable(new Stream_1.Stream(Stream_1.Stream.Head, () => Create.Repeat(element, count)));
     }
     Aggregate(arg0, arg1, arg2) {
-        if (ESType.function(arg0) && ESType.undefined(arg1) && ESType.undefined(arg2)) {
+        if (utility_1.ESType.function(arg0) && utility_1.ESType.undefined(arg1) && utility_1.ESType.undefined(arg2)) {
             return this.GetStream().reduce(arg0);
         }
-        if (ESType.any(arg0) && ESType.function(arg1) && ESType.undefined(arg2)) {
+        if (utility_1.ESType.any(arg0) && utility_1.ESType.function(arg1) && utility_1.ESType.undefined(arg2)) {
             return this.GetStream().reduce(arg1, arg0);
         }
-        if (ESType.any(arg0) && ESType.function(arg1) && ESType.function(arg2)) {
+        if (utility_1.ESType.any(arg0) && utility_1.ESType.function(arg1) && utility_1.ESType.function(arg2)) {
             return arg2(this.GetStream().reduce(arg1, arg0));
         }
-        throw TheError.ArgumentError;
+        throw utility_1.TheError.ArgumentError;
     }
     All(predicate) {
         return !this.GetStream().has(v => !predicate(v));
     }
-    Any(predicate = Predicate) {
+    Any(predicate = utility_1.Predicate) {
         return this.GetStream().has(predicate);
     }
-    Average(selector = Selector) {
+    Average(selector = utility_1.Selector) {
         var i = 0;
         return this.GetStream().reduce((avg, x) => avg += (selector(x) - avg) / (i++ + 1), 0);
     }
@@ -65,10 +47,10 @@ class Enumerable {
         return new Enumerable(this.GetStream().concat(second.GetStream()));
     }
     ;
-    Contains(value, equal = Equal) {
+    Contains(value, equal = utility_1.Equal) {
         return this.GetStream().has(v => equal(value, v));
     }
-    Count(predicate = Predicate) {
+    Count(predicate = utility_1.Predicate) {
         return this.GetStream().reduce((l, c) => predicate(c) ? l + 1 : l, 0);
     }
     DefaultIfEmpty(defaultValue) {
@@ -77,36 +59,36 @@ class Enumerable {
             return Stream_1.Stream.IsEnd(s) ? new Stream_1.Stream(defaultValue, Stream_1.Stream.End) : s;
         }));
     }
-    Distinct(equal = Equal) {
+    Distinct(equal = utility_1.Equal) {
         return new Enumerable(this.GetStream().distinct(equal));
     }
     ElementAt(index) {
         return this.GetStream().ref(v => index-- === 0 ? true : false);
     }
-    Except(second, equal = Equal) {
+    Except(second, equal = utility_1.Equal) {
         return new Enumerable(this.GetStream().except(second.GetStream(), equal));
     }
-    First(predicate = Predicate) {
+    First(predicate = utility_1.Predicate) {
         return this.GetStream().ref(predicate);
     }
-    GroupBy(keySelector, equal = Equal, elementSelector = Selector, resultSelector) {
+    GroupBy(keySelector, equal = utility_1.Equal, elementSelector = utility_1.Selector, resultSelector) {
         var s = new Stream_1.Stream(Stream_1.Stream.Head, () => Create.GroupBy(keySelector, equal, elementSelector, this.GetStream().next()));
-        return ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
+        return utility_1.ESType.function(resultSelector) ? new Enumerable(s.map(v => resultSelector(v.Key, v))) : new Enumerable(s);
     }
-    GroupJoin(inner, outerKeySelector, innerKeySelector, resultSelector, equal = Equal) {
+    GroupJoin(inner, outerKeySelector, innerKeySelector, resultSelector, equal = utility_1.Equal) {
         var innerStream = inner.GetStream().cache();
         return new Enumerable(this.GetStream().map(v => {
             var key = outerKeySelector(v);
             return resultSelector(v, new Enumerable(innerStream.filter(v => equal(key, innerKeySelector(v)))));
         }));
     }
-    Intersect(second, equal = Equal) {
+    Intersect(second, equal = utility_1.Equal) {
         return new Enumerable(this.GetStream().intersect(second.GetStream(), equal));
     }
-    Join(inner, outerKeySelector, innerKeySelector, resultSelector, equal = Equal) {
+    Join(inner, outerKeySelector, innerKeySelector, resultSelector, equal = utility_1.Equal) {
         return new Enumerable(new Stream_1.Stream(Stream_1.Stream.Head, () => Create.Join(this.GetStream().next(), inner.GetStream().cache(), outerKeySelector, innerKeySelector, resultSelector, equal)));
     }
-    Last(predicate = Predicate) {
+    Last(predicate = utility_1.Predicate) {
         var found = false, result;
         this.GetStream().forEach(v => {
             if (predicate(v)) {
@@ -116,28 +98,28 @@ class Enumerable {
         });
         if (found)
             return result;
-        throw TheError.NotFound;
+        throw utility_1.TheError.NotFound;
     }
-    Max(comparer = Comparer) {
-        return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['>'] ? l : c);
+    Max(comparer = utility_1.Comparer) {
+        return this.GetStream().reduce((l, c) => comparer(l, c) === utility_1.Comparers['>'] ? l : c);
     }
-    Min(comparer = Comparer) {
-        return this.GetStream().reduce((l, c) => comparer(l, c) === Comparers['<'] ? l : c);
+    Min(comparer = utility_1.Comparer) {
+        return this.GetStream().reduce((l, c) => comparer(l, c) === utility_1.Comparers['<'] ? l : c);
     }
-    OrderBy(keySelector, comparer = Comparer) {
+    OrderBy(keySelector, comparer = utility_1.Comparer) {
         return new OrderedEnumerable(this.GetStream(), Create.Comparer(keySelector, comparer));
     }
-    OrderByDescending(keySelector, comparer = Comparer) {
+    OrderByDescending(keySelector, comparer = utility_1.Comparer) {
         return new OrderedEnumerable(this.GetStream(), Create.Comparer(keySelector, (x, y) => {
             switch (comparer(x, y)) {
-                case Comparers['<']:
-                    return Comparers['>'];
-                case Comparers['>']:
-                    return Comparers['<'];
-                case Comparers['=']:
-                    return Comparers['='];
+                case utility_1.Comparers['<']:
+                    return utility_1.Comparers['>'];
+                case utility_1.Comparers['>']:
+                    return utility_1.Comparers['<'];
+                case utility_1.Comparers['=']:
+                    return utility_1.Comparers['='];
                 default:
-                    throw TheError.Never;
+                    throw utility_1.TheError.Never;
             }
         }));
     }
@@ -148,26 +130,26 @@ class Enumerable {
         var i = 0;
         return new Enumerable(this.GetStream().map(v => selector(v, i++)));
     }
-    SelectMany(collectionSelector, resultSelector = ResultSelector) {
+    SelectMany(collectionSelector, resultSelector = utility_1.ResultSelector) {
         var i = 0;
         return new Enumerable(this.GetStream().map(source => collectionSelector(source, i++).GetStream().map(collection => resultSelector(source, collection))).reduce((l, c) => l.concat(c), Stream_1.Stream.Empty()));
     }
-    SequenceEqual(second, equal = Equal) {
+    SequenceEqual(second, equal = utility_1.Equal) {
         return this.GetStream().equal(second.GetStream(), equal);
     }
-    Single(predicate = Predicate) {
+    Single(predicate = utility_1.Predicate) {
         var found = false, result;
         this.GetStream().forEach(v => {
             if (predicate(v)) {
                 if (found)
-                    throw TheError.NotSingle;
+                    throw utility_1.TheError.NotSingle;
                 found = true;
                 result = v;
             }
         });
         if (found)
             return result;
-        throw TheError.NotFound;
+        throw utility_1.TheError.NotFound;
     }
     Skip(count) {
         return new Enumerable(this.GetStream().skip(v => count-- !== 0));
@@ -176,7 +158,7 @@ class Enumerable {
         var i = 0;
         return new Enumerable(this.GetStream().skip(v => predicate(v, i++)));
     }
-    Sum(selector = Selector) {
+    Sum(selector = utility_1.Selector) {
         return this.GetStream().reduce((sum, x) => sum + selector(x), 0);
     }
     Take(count) {
@@ -186,12 +168,12 @@ class Enumerable {
         var i = 0;
         return new Enumerable(this.GetStream().take(v => predicate(v, i++)));
     }
-    ToDictionary(keySelector, equal = Equal, elementSelector = Selector) {
+    ToDictionary(keySelector, equal = utility_1.Equal, elementSelector = utility_1.Selector) {
         return this.GetStream().reduce((l, c) => {
             var key = keySelector(c);
             for (var k of l.keys()) {
                 if (equal(key, k))
-                    throw TheError.KeyRepeat;
+                    throw utility_1.TheError.KeyRepeat;
             }
             l.set(key, elementSelector(c));
             return l;
@@ -200,10 +182,10 @@ class Enumerable {
     ToList() {
         return this.GetStream().toList();
     }
-    ToLookup(keySelector, equal = Equal, elementSelector = Selector) {
+    ToLookup(keySelector, equal = utility_1.Equal, elementSelector = utility_1.Selector) {
         return new Lookup(this.GroupBy(keySelector, equal, elementSelector).GetStream());
     }
-    Union(second, equal = Equal) {
+    Union(second, equal = utility_1.Equal) {
         return new Enumerable(this.GetStream().union(second.GetStream(), equal));
     }
     Where(predicate) {
@@ -218,28 +200,28 @@ exports.Enumerable = Enumerable;
 class OrderedEnumerable extends Enumerable {
     constructor(s, comparer) {
         super(s.sort(comparer));
-        this.ThenBy = (ks, cp = Comparer) => {
+        this.ThenBy = (ks, cp = utility_1.Comparer) => {
             return new OrderedEnumerable(s, (x, y) => {
                 var last = comparer(x, y);
-                if (last === Comparers['=']) {
+                if (last === utility_1.Comparers['=']) {
                     return cp(ks(x), ks(y));
                 }
                 return last;
             });
         };
-        this.ThenByDescending = (ks, cp = Comparer) => {
+        this.ThenByDescending = (ks, cp = utility_1.Comparer) => {
             return new OrderedEnumerable(s, (x, y) => {
                 var last = comparer(x, y);
-                if (last === Comparers['=']) {
+                if (last === utility_1.Comparers['=']) {
                     switch (cp(ks(x), ks(y))) {
-                        case Comparers['<']:
-                            return Comparers['>'];
-                        case Comparers['>']:
-                            return Comparers['<'];
-                        case Comparers['=']:
-                            return Comparers['='];
+                        case utility_1.Comparers['<']:
+                            return utility_1.Comparers['>'];
+                        case utility_1.Comparers['>']:
+                            return utility_1.Comparers['<'];
+                        case utility_1.Comparers['=']:
+                            return utility_1.Comparers['='];
                         default:
-                            throw TheError.Never;
+                            throw utility_1.TheError.Never;
                     }
                 }
                 return last;
@@ -296,14 +278,4 @@ const Create = {
     Comparer: function (keySelector, comparer) {
         return (x, y) => comparer(keySelector(x), keySelector(y));
     }
-};
-const ESType = {
-    string: (o) => typeof (o) === 'string',
-    number: (o) => typeof (o) === 'number',
-    boolean: (o) => typeof (o) === 'boolean',
-    symbol: (o) => typeof (o) === 'symbol',
-    undefined: (o) => typeof (o) === 'undefined',
-    object: (o) => typeof (o) === 'object',
-    function: (o) => typeof (o) === 'function',
-    any: (o) => true
 };

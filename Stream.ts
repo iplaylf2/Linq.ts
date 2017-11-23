@@ -1,13 +1,4 @@
-enum TheError {
-    NotFound = 'NotFound'
-}
-enum Comparers {
-    ['<'] = -1, ['='] = 0, ['>'] = 1
-}
-type IEqual<T> = (x: T, y: T) => boolean;
-type IPredicate<T> = (v: T) => boolean;
-type ISelector<TSource, TResult> = (v: TSource) => TResult;
-type IComparer<T> = (x: T, y: T) => Comparers;
+import { IEqual, IPredicate, ISelector, IComparer, TheError, Comparers, Equal, Predicate, Selector, Comparer, ResultSelector, ESType } from './utility'
 export class Stream<T>{
     public readonly v: T;
     public readonly next: () => Stream<T>;

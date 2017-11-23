@@ -1,19 +1,5 @@
-import { Stream } from './Stream';
-enum TheError {
-    NotFound = 'NotFound', ArgumentError = 'ArgumentError', NotSingle = 'NotSingle', KeyRepeat = 'KeyRepeat', Never = 'Never'
-}
-enum Comparers {
-    ['<'] = -1, ['='] = 0, ['>'] = 1
-}
-type IEqual<T> = (x: T, y: T) => boolean;
-type IPredicate<T> = (v: T) => boolean;
-type ISelector<TSource, TResult> = (v: TSource) => TResult;
-type IComparer<T> = (x: T, y: T) => Comparers;
-const Equal: IEqual<any> = (x, y) => x === y;
-const Predicate: IPredicate<any> = v => true;
-const Selector: ISelector<any, any> = v => v;
-const Comparer: IComparer<any> = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
-const ResultSelector = (source: any, element: any) => element;
+import { IEqual, IPredicate, ISelector, IComparer, TheError, Comparers, Equal, Predicate, Selector, Comparer, ResultSelector, ESType } from './utility'
+import { Stream } from './Stream'
 export class Enumerable<T>{
     public readonly GetStream: () => Stream<T>;
     public constructor(s: Stream<T>) {
@@ -61,7 +47,7 @@ export class Enumerable<T>{
     }
     public Concat(second: Enumerable<T>): Enumerable<T> {
         return new Enumerable(this.GetStream().concat(second.GetStream()));
-    };
+    }
     public Contains(value: T, equal: IEqual<T> = Equal): boolean {
         return this.GetStream().has(v => equal(value, v));
     }
@@ -308,13 +294,3 @@ const Create = {
         return (x, y) => comparer(keySelector(x), keySelector(y));
     }
 };
-const ESType = {
-    string: (o: any) => typeof (o) === 'string',
-    number: (o: any) => typeof (o) === 'number',
-    boolean: (o: any) => typeof (o) === 'boolean',
-    symbol: (o: any) => typeof (o) === 'symbol',
-    undefined: (o: any) => typeof (o) === 'undefined',
-    object: (o: any) => typeof (o) === 'object',
-    function: (o: any) => typeof (o) === 'function',
-    any: (o: any) => true
-}
