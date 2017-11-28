@@ -132,7 +132,9 @@ export class Stream<T>{
             second.distinct(equal)));
     }
     public except(second: Stream<T>, equal: IEqual<T>): Stream<T> {
-        return new Stream(Stream.Head, () => Create.except(equal, this.next(), second.cache()));
+        return new Stream(Stream.Head, () => Create.except(equal,
+            this.distinct(equal).next(),
+            second.distinct(equal)));
     }
     public skip(predicate: IPredicate<T>): Stream<T> {
         return new Stream(Stream.Head, () => Create.skip(predicate, this.next()));
@@ -214,8 +216,14 @@ const Create = {
         }
     },
     except: function create<T>(equal: IEqual<T>, first: Stream<T>, second: Stream<T>): Stream<T> {
-        return Stream.IsEnd(first) ? Stream.End
-            : second.has(v => equal(first.v, v)) ? create(equal, first.next(), second) : new Stream(first.v, () => create(equal, first.next(), second));
+        if (Stream.IsEnd(first)) {
+            return Stream.End;
+        }
+        else {
+            var [eq, neq] = second.shunt(v => equal(first.v, v));
+            if (Stream.IsEnd(eq.next())) return new Stream(first.v, () => create(equal, first.next(), neq));
+            else return create(equal, first.next(), neq);
+        }
     },
     skip: function create<T>(predicate: IPredicate<T>, s: Stream<T>): Stream<T> {
         return Stream.IsEnd(s) ? Stream.End :
