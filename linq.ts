@@ -57,7 +57,7 @@ export class Enumerable<T>{
     public DefaultIfEmpty(defaultValue: T): Enumerable<T> {
         return new Enumerable(new Stream(Stream.Head, () => {
             var s = this.GetStream().next();
-            return Stream.IsEnd(s) ? new Stream(defaultValue, Stream.End) : s;
+            return Stream.IsEnd(s) ? new Stream(defaultValue, Stream.End as any) : s;
         }));
     }
     public Distinct(equal: IEqual<T> = Equal): Enumerable<T> {
