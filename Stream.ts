@@ -17,10 +17,7 @@ export class Stream<T>{
         };
     }
     public static Head: any;
-    public static End: Stream<any> = (() => {
-        var s: any = new Stream(s, () => s);
-        return s;
-    })();
+    public static End: any;
     public static IsEnd<T>(s: Stream<T>): boolean {
         return s === Stream.End;
     }
