@@ -17,7 +17,10 @@ export class Stream<T>{
         };
     }
     public static Head: any;
-    public static End: any;
+    public static End: any = (() => {
+        var end: Stream<any> = new Stream(undefined, () => end);
+        return end;
+    })();
     public static IsEnd<T>(s: Stream<T>): boolean {
         return s === Stream.End;
     }
@@ -156,7 +159,6 @@ export var Create = {
         else {
             source.s = source.s.next();
             if (Stream.IsEnd(source.s)) {
-                source.s = new Stream(Stream.Head, () => Stream.End);
                 return Stream.End;
             }
             else {

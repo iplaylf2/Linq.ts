@@ -142,6 +142,10 @@ class Stream {
         });
     }
 }
+Stream.End = (() => {
+    var end = new Stream(undefined, () => end);
+    return end;
+})();
 exports.Stream = Stream;
 exports.Create = {
     Map: function create(func, ...sList) {
@@ -158,7 +162,6 @@ exports.Create = {
         else {
             source.s = source.s.next();
             if (Stream.IsEnd(source.s)) {
-                source.s = new Stream(Stream.Head, () => Stream.End);
                 return Stream.End;
             }
             else {
