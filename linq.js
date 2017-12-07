@@ -46,7 +46,6 @@ class Enumerable {
     Concat(second) {
         return new Enumerable(this.GetStream().concat(second.GetStream()));
     }
-    ;
     Contains(value, equal = utility_1.Equal) {
         return this.GetStream().has(v => equal(value, v));
     }
@@ -263,7 +262,7 @@ const Create = {
         else {
             var key = keySelector(s.v), value = elementSelector(s.v);
             var [result, rest] = s.shunt(v => equal(key, keySelector(v)));
-            return new Stream_1.Stream(new Grouping(key, Stream_1.Stream.Create(value, () => result.map(elementSelector).next())), () => create(keySelector, equal, elementSelector, rest.next()));
+            return new Stream_1.Stream(new Grouping(key, Stream_1.Stream.Create(value, () => Stream_1.Create.Map(elementSelector, result.next()))), () => create(keySelector, equal, elementSelector, rest.next()));
         }
     },
     Join: function create(outer, inner, outerKeySelector, innerKeySelector, resultSelector, equal) {
@@ -272,7 +271,7 @@ const Create = {
         }
         else {
             var outerKey = outerKeySelector(outer.v), outerValue = outer.v;
-            return inner.filter(v => equal(outerKey, innerKeySelector(v))).map(innerValue => resultSelector(outerValue, innerValue)).concat(new Stream_1.Stream(Stream_1.Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal))).next();
+            return Stream_1.Create.concat(new Stream_1.Stream(Stream_1.Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal)), Stream_1.Create.Map(innerValue => resultSelector(outerValue, innerValue), Stream_1.Create.filter(v => equal(outerKey, innerKeySelector(v)), inner.next())));
         }
     },
     Comparer: function (keySelector, comparer) {

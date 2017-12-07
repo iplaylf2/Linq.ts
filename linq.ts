@@ -1,5 +1,5 @@
 import { IEqual, IPredicate, ISelector, IComparer, TheError, Comparers, Equal, Predicate, Selector, Comparer, ResultSelector, ESType } from './utility'
-import { Stream } from './Stream'
+import { Stream, Create as StreamCreate } from './Stream'
 export class Enumerable<T>{
     public readonly GetStream: () => Stream<T>;
     public constructor(s: Stream<T>) {
@@ -277,7 +277,8 @@ const Create = {
         else {
             var key = keySelector(s.v), value = elementSelector(s.v);
             var [result, rest] = s.shunt(v => equal(key, keySelector(v)));
-            return new Stream(new Grouping(key, Stream.Create(value, () => result.map(elementSelector).next())),
+            return new Stream(
+                new Grouping(key, Stream.Create(value, () => StreamCreate.Map(elementSelector, result.next()))),
                 () => create(keySelector, equal, elementSelector, rest.next()));
         }
     },
@@ -287,7 +288,11 @@ const Create = {
         }
         else {
             var outerKey = outerKeySelector(outer.v), outerValue = outer.v;
-            return inner.filter(v => equal(outerKey, innerKeySelector(v))).map(innerValue => resultSelector(outerValue, innerValue)).concat(new Stream(Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal))).next();
+            return StreamCreate.concat(
+                new Stream(Stream.Head, () => create(outer.next(), inner, outerKeySelector, innerKeySelector, resultSelector, equal)),
+                StreamCreate.Map(
+                    innerValue => resultSelector(outerValue, innerValue),
+                    StreamCreate.filter(v => equal(outerKey, innerKeySelector(v)), inner.next())));
         }
     },
     Comparer: function <T, Tkey>(keySelector: ISelector<T, Tkey>, comparer: IComparer<Tkey>): IComparer<T> {
