@@ -94,9 +94,9 @@ export class Stream<T>{
         return false;
     }
     public shunt(predicate: IPredicate<T>): [Stream<T>, Stream<T>] {
-        var arr1: T[] = [], arr2: T[] = [], o: { s: Stream<T> } = { s: this };
-        return [new Stream(Stream.Head, () => Create.shunt(predicate, arr1, arr2, o, 0)),
-        new Stream(Stream.Head, () => Create.shunt(v => !predicate(v), arr2, arr1, o, 0))];
+        var arr1: T[] = [], arr2: T[] = [], source: { s: Stream<T> } = { s: this };
+        return [new Stream(Stream.Head, () => Create.shunt(predicate, arr1, arr2, source, 0)),
+        new Stream(Stream.Head, () => Create.shunt(v => !predicate(v), arr2, arr1, source, 0))];
     }
     /*lazy*/
     public map<TResult>(func: ISelector<T, TResult>): Stream<TResult> {

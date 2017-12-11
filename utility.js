@@ -1,25 +1,23 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-var TheError;
+export var TheError;
 (function (TheError) {
     TheError["NotFound"] = "NotFound";
     TheError["ArgumentError"] = "ArgumentError";
     TheError["NotSingle"] = "NotSingle";
     TheError["KeyRepeat"] = "KeyRepeat";
     TheError["Never"] = "Never";
-})(TheError = exports.TheError || (exports.TheError = {}));
-var Comparers;
+})(TheError || (TheError = {}));
+export var Comparers;
 (function (Comparers) {
     Comparers[Comparers['<'] = -1] = '<';
     Comparers[Comparers['='] = 0] = '=';
     Comparers[Comparers['>'] = 1] = '>';
-})(Comparers = exports.Comparers || (exports.Comparers = {}));
-exports.Equal = (x, y) => x === y;
-exports.Predicate = v => true;
-exports.Selector = v => v;
-exports.Comparer = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
-exports.ResultSelector = (source, element) => element;
-exports.ESType = {
+})(Comparers || (Comparers = {}));
+export const Equal = (x, y) => x === y;
+export const Predicate = v => true;
+export const Selector = v => v;
+export const Comparer = (x, y) => x < y ? Comparers['<'] : x === y ? Comparers['='] : Comparers['>'];
+export const ResultSelector = (source, element) => element;
+export const ESType = {
     string: (o) => typeof (o) === 'string',
     number: (o) => typeof (o) === 'number',
     boolean: (o) => typeof (o) === 'boolean',

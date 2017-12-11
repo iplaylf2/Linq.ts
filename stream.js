@@ -1,7 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const utility_1 = require("./utility");
-class Stream {
+import { TheError, Comparers } from './utility';
+export class Stream {
     constructor(v, next) {
         this.v = v;
         this.next = next;
@@ -22,10 +20,10 @@ class Stream {
         return s === Stream.End;
     }
     static Map(func, ...sList) {
-        return new Stream(Stream.Head, () => exports.Create.Map(func, ...sList.map(s => s.next())));
+        return new Stream(Stream.Head, () => Create.Map(func, ...sList.map(s => s.next())));
     }
     static CreateFrom(iterable) {
-        return new Stream(Stream.Head, () => exports.Create.CreateFrom(iterable[Symbol.iterator]()));
+        return new Stream(Stream.Head, () => Create.CreateFrom(iterable[Symbol.iterator]()));
     }
     static Empty() {
         return new Stream(Stream.Head, () => Stream.End);
@@ -83,7 +81,7 @@ class Stream {
                 return s.v;
             s = s.next();
         }
-        throw utility_1.TheError.NotFound;
+        throw TheError.NotFound;
     }
     has(predicate) {
         var s = this.next();
@@ -95,46 +93,46 @@ class Stream {
         return false;
     }
     shunt(predicate) {
-        var arr1 = [], arr2 = [], o = { s: this };
-        return [new Stream(Stream.Head, () => exports.Create.shunt(predicate, arr1, arr2, o, 0)),
-            new Stream(Stream.Head, () => exports.Create.shunt(v => !predicate(v), arr2, arr1, o, 0))];
+        var arr1 = [], arr2 = [], source = { s: this };
+        return [new Stream(Stream.Head, () => Create.shunt(predicate, arr1, arr2, source, 0)),
+            new Stream(Stream.Head, () => Create.shunt(v => !predicate(v), arr2, arr1, source, 0))];
     }
     /*lazy*/
     map(func) {
         return Stream.Map(func, this);
     }
     filter(predicate) {
-        return new Stream(Stream.Head, () => exports.Create.filter(predicate, this.next()));
+        return new Stream(Stream.Head, () => Create.filter(predicate, this.next()));
     }
     concat(second) {
-        return new Stream(Stream.Head, () => exports.Create.concat(second, this.next()));
+        return new Stream(Stream.Head, () => Create.concat(second, this.next()));
     }
     sort(comparer) {
-        return new Stream(Stream.Head, () => exports.Create.sort(comparer, this.next()));
+        return new Stream(Stream.Head, () => Create.sort(comparer, this.next()));
     }
     distinct(equal) {
-        return new Stream(Stream.Head, () => exports.Create.distinct(equal, this.next()));
+        return new Stream(Stream.Head, () => Create.distinct(equal, this.next()));
     }
     union(second, equal) {
         return this.concat(second).distinct(equal);
     }
     intersect(second, equal) {
-        return new Stream(Stream.Head, () => exports.Create.intersect(equal, exports.Create.distinct(equal, this.next()), second));
+        return new Stream(Stream.Head, () => Create.intersect(equal, Create.distinct(equal, this.next()), second));
     }
     except(second, equal) {
-        return new Stream(Stream.Head, () => exports.Create.except(equal, exports.Create.distinct(equal, this.next()), second));
+        return new Stream(Stream.Head, () => Create.except(equal, Create.distinct(equal, this.next()), second));
     }
     skip(predicate) {
-        return new Stream(Stream.Head, () => exports.Create.skip(predicate, this.next()));
+        return new Stream(Stream.Head, () => Create.skip(predicate, this.next()));
     }
     take(predicate) {
-        return new Stream(Stream.Head, () => exports.Create.take(predicate, this.next()));
+        return new Stream(Stream.Head, () => Create.take(predicate, this.next()));
     }
     cache() {
         var next, flag = true;
         return new Stream(Stream.Head, () => {
             if (flag) {
-                next = exports.Create.cache(this.next());
+                next = Create.cache(this.next());
                 flag = false;
             }
             ;
@@ -146,8 +144,7 @@ Stream.End = (() => {
     var end = new Stream(undefined, () => end);
     return end;
 })();
-exports.Stream = Stream;
-exports.Create = {
+export var Create = {
     Map: function create(func, ...sList) {
         return Stream.IsEnd(sList[0]) ? Stream.End : new Stream(func(...sList.map(s => s.v)), () => create(func, ...sList.map(s => s.next())));
     },
@@ -188,12 +185,12 @@ exports.Create = {
             return Stream.End;
         }
         else {
-            var [s1, s2] = s.shunt(v => comparer(s.v, v) === utility_1.Comparers['>']);
-            return exports.Create.concat(Stream.Create(s.v, () => exports.Create.sort(comparer, s2.next())), exports.Create.sort(comparer, s1.next()));
+            var [s1, s2] = s.shunt(v => comparer(s.v, v) === Comparers['>']);
+            return Create.concat(Stream.Create(s.v, () => Create.sort(comparer, s2.next())), Create.sort(comparer, s1.next()));
         }
     },
     distinct: function create(equal, s) {
-        return Stream.IsEnd(s) ? Stream.End : new Stream(s.v, () => create(equal, exports.Create.filter(v => !equal(s.v, v), s)));
+        return Stream.IsEnd(s) ? Stream.End : new Stream(s.v, () => create(equal, Create.filter(v => !equal(s.v, v), s)));
     },
     intersect: function create(equal, first, second) {
         if (Stream.IsEnd(first)) {
