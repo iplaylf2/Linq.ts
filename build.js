@@ -1,7 +1,7 @@
-var rollup=require('rollup');
+var rollup = require('rollup');
 rollup.rollup({
-    entry: 'linq.js',
-}).then( function ( bundle ) {
+    entry: 'src/js/linq.js',
+}).then(function (bundle) {
     bundle.write({
         format: 'umd',
         moduleName: 'linq',
