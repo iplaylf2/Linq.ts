@@ -8,11 +8,10 @@
 如将一个数组每个元素x10再取前十个元素：
 var r1=Enumerable.CreamForm(arr).Select(v=>v*10).Take(10);
 
-相当于先取十个元素再每个元素x10（计算次数上）：
-var r2=Enumerable.CreamForm(arr)).Take(10).Select(v=>v*10;
+先取十个元素再每个元素x10与上式未来的计算次数相当：
+var r2=Enumerable.CreamForm(arr)).Take(10).Select(v=>v*10);
 
-而且r1.Last()求结果集最后一个元素时，才会进行计算。最后:
-r1.Last()===r2.Last();
+而且r1.Last()求结果集最后一个元素时，才会进行计算。
 
 在本源码结构上Stream.ts是核。基本上Stream.ts可以拿来直接使用
 Linq.ts是皮。Linq.ts是在Stream上添加一层外皮，代码上很多时候都是添加函数重载，最后在使用上更接近.net的linq函数式查询方式。
