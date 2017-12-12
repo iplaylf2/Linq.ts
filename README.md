@@ -8,7 +8,7 @@
 如将一个数组每个元素x10再取前十个元素：
 var r1=Enumerable.CreamForm(arr).Select(v=>v*10).Take(10);
 
-相当于先取十个元素再每个元素x10：
+相当于先取十个元素再每个元素x10（计算次数上）：
 var r2=Enumerable.CreamForm(arr)).Take(10).Select(v=>v*10;
 
 而且r1.Last()求结果集最后一个元素时，才会进行计算。最后:
