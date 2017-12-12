@@ -254,7 +254,7 @@ export class Grouping<TKey, TElement> extends Enumerable<TElement>{
 }
 export class Lookup<TKey, TElement> extends Enumerable<Grouping<TKey, TElement>>{
     public constructor(s: Stream<Grouping<TKey, TElement>>) {
-        super(s);
+        super(s.cache());
     }
     public Get(key: TKey): Enumerable<TElement> {
         return this.First(v => v.Key === key);

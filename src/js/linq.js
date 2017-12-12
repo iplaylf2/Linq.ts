@@ -233,7 +233,7 @@ export class Grouping extends Enumerable {
 }
 export class Lookup extends Enumerable {
     constructor(s) {
-        super(s);
+        super(s.cache());
     }
     Get(key) {
         return this.First(v => v.Key === key);

@@ -509,7 +509,7 @@ class Grouping extends Enumerable {
 }
 class Lookup extends Enumerable {
     constructor(s) {
-        super(s);
+        super(s.cache());
     }
     Get(key) {
         return this.First(v => v.Key === key);
