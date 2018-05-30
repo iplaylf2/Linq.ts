@@ -41,6 +41,9 @@ export class Enumerable {
         var i = 0;
         return this.GetStream().reduce((avg, x) => avg += (selector(x) - avg) / (i++ + 1), 0);
     }
+    Cast() {
+        return this;
+    }
     Concat(second) {
         return new Enumerable(this.GetStream().concat(second.GetStream()));
     }
